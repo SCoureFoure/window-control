@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest -q)",
+      "Bash(python -c \"import PyQt6\")",
+      "Bash(pip install *)",
+      "Bash(python -c \"import PyQt6; print\\('OK'\\)\")",
+      "Bash(python -m pytest tests/test_orchestrator.py -v)",
+      "Bash(python -m pytest tests/test_perception.py -v)",
+      "Bash(python -m pytest tests/test_safety.py -v)"
+    ]
+  }
+}
