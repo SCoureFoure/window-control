@@ -129,6 +129,7 @@ scripts/
 
 ## Working on this repo
 
+- Use `/delegate` as the entry point for all development work on this repo — implementation, refactors, bug fixes, and feature builds. It routes work through the horde to the cheapest capable agent tier and judges by the verify command.
 - When in doubt about scope, re-read "Core invariants" above and ask before deviating.
 - Refactors that violate an invariant need a written justification in the PR description.
 - New action types go through `InputBackend`. New perception strategies go through `zones/perception.py`. New capture sources go through `zones/capture.py`. Do not bypass.

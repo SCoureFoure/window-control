@@ -130,6 +130,18 @@ def _cmd_edit_lens(name: str) -> int:
     return 0
 
 
+def _cmd_snap(title: str, name: str) -> int:
+    from src.utils.windows import snap_lens_to_window
+    try:
+        lens = snap_lens_to_window(title, name=name)
+    except ValueError as exc:
+        print(f"Snap failed: {exc}")
+        return 1
+    lens_store.save(lens)
+    print(f"Snapped lens {name!r} to window {title!r}: {lens.rect}")
+    return 0
+
+
 def _cmd_list_lenses() -> int:
     names = lens_store.list_names()
     if not names:
@@ -157,6 +169,8 @@ def main() -> None:
                         help="Comma-separated allowlist of action types (e.g. click,type)")
     parser.add_argument("--no-typing", action="store_true",
                         help="Shortcut: drop 'type' and 'key' from the allowlist")
+    parser.add_argument("--snap", default=None, metavar="TITLE",
+                        help="Snap a new lens to the visible window whose title contains TITLE, save it under --lens NAME, and exit")
     args = parser.parse_args()
 
     set_per_monitor_dpi_aware()
@@ -170,6 +184,8 @@ def main() -> None:
     if args.no_typing:
         safety.restrict(safety.ALLOWED_ACTIONS - safety.TYPING_ACTIONS)
 
+    if args.snap:
+        sys.exit(_cmd_snap(args.snap, args.lens))
     if args.list_lenses:
         sys.exit(_cmd_list_lenses())
     if args.new_lens:
