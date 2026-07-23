@@ -4,7 +4,7 @@ The load-bearing invariant: every band rect must lie OUTSIDE the lens rect, so
 the on-screen border is never captured into the screenshot sent to Claude.
 """
 
-from src.lens.border import band_rects
+from src.lens.border import _read_state, _write_state, band_rects
 
 
 def _overlaps(a, b) -> bool:
@@ -41,3 +41,16 @@ def test_frame_encloses_lens_bounds():
     assert bottom[1] == y + h              # bottom band top edge == lens bottom
     assert left[0] + left[2] == x          # left band right edge == lens left
     assert right[0] == x + w               # right band left edge == lens right
+
+
+def test_state_roundtrip(tmp_path):
+    p = str(tmp_path / "s.state")
+    _write_state(p, "acting")
+    assert _read_state(p) == "acting"
+    _write_state(p, "watching")
+    assert _read_state(p) == "watching"
+
+
+def test_read_state_missing_returns_default():
+    assert _read_state(str_missing := "definitely-not-a-real-path.state") == "watching"
+    assert _read_state(str_missing, default="stop") == "stop"
