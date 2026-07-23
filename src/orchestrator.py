@@ -44,6 +44,7 @@ def run(
     lens: Lens,
     max_steps: int = DEFAULT_MAX_STEPS,
     show_grid: bool = False,
+    show_border: bool = False,
 ) -> None:
     reporter = Reporter(goal=goal, lens=lens)
     backend = DesktopBackend()
@@ -52,57 +53,71 @@ def run(
     messages: list[dict] = []
     prev_id: str | None = None
 
-    for step in range(1, max_steps + 1):
-        try:
-            img = capture(lens)
-        except Exception as exc:
-            reporter.on_error(step, exc)
-            break
+    border = None
+    if show_border:
+        from src.lens.border import AccessBorder
+        border = AccessBorder(lens)
+        border.start()
 
-        if show_grid:
-            img = draw_grid(img)
-        b64 = encode_png_b64(img)
-        reporter.on_capture(step, b64, lens.w, lens.h)
+    try:
+        for step in range(1, max_steps + 1):
+            if border:
+                border.set_state("watching")
+            try:
+                img = capture(lens)
+            except Exception as exc:
+                reporter.on_error(step, exc)
+                break
 
-        try:
-            result, messages, prev_id = ask_claude(
-                client=client,
-                system=system,
-                messages=messages,
-                screenshot_b64=b64,
-                width=lens.w,
-                height=lens.h,
-                prev_tool_use_id=prev_id,
-            )
-        except Exception as exc:
-            reporter.on_error(step, exc)
-            break
+            if show_grid:
+                img = draw_grid(img)
+            b64 = encode_png_b64(img)
+            reporter.on_capture(step, b64, lens.w, lens.h)
 
-        if isinstance(result, TerminalResult):
-            reporter.on_terminal(step, result)
-            break
+            try:
+                result, messages, prev_id = ask_claude(
+                    client=client,
+                    system=system,
+                    messages=messages,
+                    screenshot_b64=b64,
+                    width=lens.w,
+                    height=lens.h,
+                    prev_tool_use_id=prev_id,
+                )
+            except Exception as exc:
+                reporter.on_error(step, exc)
+                break
 
-        action: ParsedAction = result
-        reporter.on_action(step, action)
+            if isinstance(result, TerminalResult):
+                reporter.on_terminal(step, result)
+                break
 
-        if action.action == "screenshot":
-            reporter.on_screenshot_request(step)
-            continue
+            action: ParsedAction = result
+            reporter.on_action(step, action)
 
-        if not safety.is_allowed(action.action):
-            reporter.on_error(step, ValueError(f"action {action.action!r} not in allowlist"))
-            continue
+            if action.action == "screenshot":
+                reporter.on_screenshot_request(step)
+                continue
 
-        try:
-            execute(action, lens, backend)
-        except OutOfBoundsError as exc:
-            reporter.on_error(step, exc)
-            # Don't break — let the model see the next screenshot and recover
-        except Exception as exc:
-            reporter.on_error(step, exc)
-            break
-    else:
-        reporter.on_max_steps(max_steps)
+            if not safety.is_allowed(action.action):
+                reporter.on_error(step, ValueError(f"action {action.action!r} not in allowlist"))
+                continue
+
+            if border:
+                border.set_state("acting")
+            try:
+                execute(action, lens, backend)
+            except OutOfBoundsError as exc:
+                reporter.on_error(step, exc)
+                # Don't break — let the model see the next screenshot and recover
+            except Exception as exc:
+                reporter.on_error(step, exc)
+                break
+        else:
+            reporter.on_max_steps(max_steps)
+    finally:
+        if border:
+            border.stop()
 
     print(f"\n{reporter.summary()}")
 
@@ -162,6 +177,8 @@ def main() -> None:
     parser.add_argument("--lens", default=lens_store.DEFAULT_NAME, help="Lens name (default: 'default')")
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
     parser.add_argument("--grid", action="store_true", help="Overlay a coordinate grid on each capture")
+    parser.add_argument("--no-border", action="store_true",
+                        help="Disable the on-screen access border (shown around the lens during a run)")
     parser.add_argument("--new-lens", action="store_true", help="Open the editor to create a new lens")
     parser.add_argument("--edit-lens", action="store_true", help="Open the editor to modify an existing lens")
     parser.add_argument("--list-lenses", action="store_true", help="Print saved lenses and exit")
@@ -202,7 +219,8 @@ def main() -> None:
               f"    python -m src.orchestrator --new-lens --lens {args.lens}")
         sys.exit(1)
 
-    run(goal=args.goal, lens=lens, max_steps=args.max_steps, show_grid=args.grid)
+    run(goal=args.goal, lens=lens, max_steps=args.max_steps, show_grid=args.grid,
+        show_border=not args.no_border)
 
 
 if __name__ == "__main__":
