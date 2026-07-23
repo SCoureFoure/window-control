@@ -24,9 +24,17 @@ DEFAULT_RECT = (200, 200, 800, 600)
 
 def edit_lens(existing: Lens | None, name: str = "default") -> Lens | None:
     """Open the overlay editor. Returns the new Lens or None if cancelled."""
+    import os
+
+    # coords.set_per_monitor_dpi_aware() already made the process
+    # PER_MONITOR_AWARE_V2 before Qt starts, so Qt's own attempt to set the
+    # same context returns "Access is denied" and logs a warning. The result
+    # is identical (our awareness stands), so silence just that log category.
+    os.environ.setdefault("QT_LOGGING_RULES", "qt.qpa.window.warning=false")
+
     from PyQt6.QtCore import Qt, QRect, QPoint
     from PyQt6.QtGui import QPainter, QPen, QColor, QBrush, QKeyEvent, QMouseEvent
-    from PyQt6.QtWidgets import QApplication, QWidget, QLabel
+    from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QPushButton
 
     class LensOverlay(QWidget):
         def __init__(self, rect: QRect, label: str):
@@ -56,8 +64,46 @@ def edit_lens(existing: Lens | None, name: str = "default") -> Lens | None:
             )
             self.help.adjustSize()
             self.help.move(20, 20)
+            # Clickable Save / Cancel buttons. A frameless translucent Tool
+            # window does not reliably take keyboard focus on Windows, so
+            # Enter/Esc may never fire — the buttons are the dependable path.
+            btn_css = (
+                "QPushButton {{ background: {bg}; color: white; border: none; "
+                "padding: 8px 18px; font: 12pt 'Segoe UI'; border-radius: 4px; }}"
+                "QPushButton:hover {{ background: {hov}; }}"
+            )
+            self.save_btn = QPushButton("Save (Enter)", self)
+            self.save_btn.setStyleSheet(btn_css.format(bg="#1e7e34", hov="#28a745"))
+            self.save_btn.adjustSize()
+            self.save_btn.move(20, 20 + self.help.height() + 8)
+            self.save_btn.clicked.connect(self._confirm)
+            self.cancel_btn = QPushButton("Cancel (Esc)", self)
+            self.cancel_btn.setStyleSheet(btn_css.format(bg="#a71d2a", hov="#dc3545"))
+            self.cancel_btn.adjustSize()
+            self.cancel_btn.move(
+                20 + self.save_btn.width() + 8, 20 + self.help.height() + 8
+            )
+            self.cancel_btn.clicked.connect(self._cancel)
             self.setMouseTracking(True)
+            # Still try for keyboard focus so Enter/Esc work when they can.
+            self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             self.show()
+            self.raise_()
+            self.activateWindow()
+            self.setFocus(Qt.FocusReason.OtherFocusReason)
+
+        def _finish(self, confirmed: bool) -> None:
+            # A Qt.Tool window is excluded from Qt's "last window closed" count,
+            # so close() alone never returns from app.exec(). Quit explicitly.
+            self.confirmed = confirmed
+            self.close()
+            QApplication.quit()
+
+        def _confirm(self) -> None:
+            self._finish(True)
+
+        def _cancel(self) -> None:
+            self._finish(False)
 
         # ----- handle geometry -----
 
@@ -156,11 +202,9 @@ def edit_lens(existing: Lens | None, name: str = "default") -> Lens | None:
 
         def keyPressEvent(self, e: QKeyEvent) -> None:  # noqa: N802
             if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-                self.confirmed = True
-                self.close()
+                self._finish(True)
             elif e.key() == Qt.Key.Key_Escape:
-                self.confirmed = False
-                self.close()
+                self._finish(False)
 
     app = QApplication.instance() or QApplication([])
     if existing is not None:
