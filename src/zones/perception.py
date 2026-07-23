@@ -230,7 +230,24 @@ def ask_claude(
     if tool_use is None:
         full_text = " ".join(text_parts).strip()
         upper = full_text.upper()
-        done = upper.startswith(DONE_PREFIX)
+
+        # Scan for terminal markers anywhere in the message
+        done_index = upper.find(DONE_PREFIX + ":")
+        impossible_index = upper.find(IMPOSSIBLE_PREFIX + ":")
+
+        if done_index == -1 and impossible_index == -1:
+            # Neither marker present - fall back to prefix test
+            done = upper.startswith(DONE_PREFIX)
+        elif done_index == -1:
+            # Only IMPOSSIBLE: present
+            done = False
+        elif impossible_index == -1:
+            # Only DONE: present
+            done = True
+        else:
+            # Both present - IMPOSSIBLE wins only if it appears before DONE
+            done = not (impossible_index < done_index)
+
         return TerminalResult(message=full_text, done=done), new_messages, None
 
     return _parse_tool_use(tool_use), new_messages, tool_use["id"]

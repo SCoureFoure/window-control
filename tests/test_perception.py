@@ -116,6 +116,72 @@ def test_impossible_terminal():
     assert result.done is False
 
 
+# Marker scan tests: detect DONE: and IMPOSSIBLE: anywhere in message
+def test_terminal_done_with_leading_narration():
+    """Acceptance case 1: narration before DONE: marker."""
+    client = _mock_client([_text_block("The dialog is open now.\n\nDONE: Clicked the Options icon.")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is True
+    assert "Clicked the Options icon" in result.message
+
+
+def test_terminal_done_plain():
+    """Acceptance case 2: plain DONE: at start."""
+    client = _mock_client([_text_block("DONE: typed hello")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is True
+
+
+def test_terminal_impossible_plain():
+    """Acceptance case 3: plain IMPOSSIBLE: at start."""
+    client = _mock_client([_text_block("IMPOSSIBLE: no such button is visible")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is False
+
+
+def test_terminal_impossible_with_leading_narration():
+    """Acceptance case 4: narration before IMPOSSIBLE: marker."""
+    client = _mock_client([_text_block("Some narration then IMPOSSIBLE: cannot find it")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is False
+
+
+def test_terminal_bare_done_no_colon():
+    """Acceptance case 5: bare DONE with no colon (prefix fallback)."""
+    client = _mock_client([_text_block("DONE")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is True
+
+
+def test_terminal_no_marker():
+    """Acceptance case 6: no marker at all."""
+    client = _mock_client([_text_block("I clicked around but nothing happened")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is False
+
+
+def test_terminal_both_markers_done_first():
+    """Acceptance case 7: both markers, DONE: comes first."""
+    client = _mock_client([_text_block("DONE: finished. It was not IMPOSSIBLE: after all")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is True
+
+
+def test_terminal_both_markers_impossible_first():
+    """Acceptance case 8: both markers, IMPOSSIBLE: comes first."""
+    client = _mock_client([_text_block("IMPOSSIBLE: blocked. Not DONE: yet")])
+    result, _, _ = ask_claude(client, "sys", [], "b64", 100, 100)
+    assert isinstance(result, TerminalResult)
+    assert result.done is False
+
+
 def test_system_prompt_has_cache_control():
     client = _mock_client([_tool_use_block({"action": "screenshot"})])
     ask_claude(client, "sys", [], "b64", 100, 100)
