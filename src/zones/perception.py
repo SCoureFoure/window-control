@@ -4,7 +4,7 @@ Conventions:
 - Stateless. The orchestrator owns the message history.
 - All content blocks are stored as plain dicts so they round-trip safely
   through the SDK on subsequent turns.
-- Uses Anthropic Computer Use beta (`computer-use-2025-01-24`).
+- Uses Anthropic Computer Use beta (`computer-use-2025-11-24`).
 - The system prompt is marked for prompt caching.
 """
 
@@ -16,9 +16,9 @@ from typing import Any
 
 import anthropic
 
-MODEL = "claude-sonnet-4-6"
-COMPUTER_USE_BETA = "computer-use-2025-01-24"
-MAX_TOKENS = 1024
+MODEL = "claude-opus-4-8"
+COMPUTER_USE_BETA = "computer-use-2025-11-24"
+MAX_TOKENS = 2048
 
 DONE_PREFIX = "DONE"
 IMPOSSIBLE_PREFIX = "IMPOSSIBLE"
@@ -79,7 +79,7 @@ def build_system_prompt(goal: str, lens_name: str, lens_w: int, lens_h: int) -> 
 
 def _make_computer_tool(width: int, height: int) -> dict:
     return {
-        "type": "computer_20250124",
+        "type": "computer_20251124",
         "name": "computer",
         "display_width_px": width,
         "display_height_px": height,

@@ -63,7 +63,7 @@ The **orchestrator** owns the loop, the message history, and the reporter. Zones
 
 ### 9. Anthropic Computer Use beta is the model interface
 
-- Model: `claude-sonnet-4-6` with beta header `computer-use-2025-01-24` (revisit on model bumps).
+- Model: `claude-opus-4-8` with beta header `computer-use-2025-11-24` and tool type `computer_20251124` (revisit on model bumps; `claude-sonnet-4-6` + `computer_20250124` was retired — that pairing 400s).
 - Use prompt caching on the system prompt. Screenshots use `cache_control: ephemeral` where it pays off.
 - One tool call per turn. Multi-action plans are emergent from the loop, not batched.
 
