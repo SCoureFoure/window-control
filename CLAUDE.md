@@ -79,45 +79,87 @@ The **orchestrator** owns the loop, the message history, and the reporter. Zones
 - Python 3.11+
 - `anthropic` — model client
 - `mss` — fast screen capture
-- `pyautogui` — input synthesis
+- `pyautogui` — input synthesis (note: `DesktopBackend.click` holds the button
+  ~80ms — Unity targets miss zero-duration clicks; do not "simplify" it back)
 - `pywin32` — DPI awareness, window enumeration (helper only), foreground hints
 - `Pillow` — PNG encode + optional grid overlay draw
-- `PyQt6` — lens overlay UI (transparent always-on-top frameless window with drag handles)
+- `PyQt6` — lens overlay UI + access border (border runs as a subprocess: QApplication
+  must own a process's main thread)
+- `PyYAML` — script files
 - `python-dotenv` — `.env` for `ANTHROPIC_API_KEY`
 
 ## Project layout
 
 ```
 src/
-  orchestrator.py        # run loop: capture → perceive → act
+  orchestrator.py        # CLI + run loop: capture → perceive → act; returns outcome
+                         #   ("done"|"impossible"|"error"|"max_steps"); also hosts
+                         #   --goal-name/--save-goal/--list-goals and --tap
   reporter.py            # runs/ artifacts
+  safety.py              # action allowlist (--allow / --no-typing)
   lens/
     model.py             # Lens dataclass, screen-abs rect math
-    store.py             # load/save ~/.window-control/lens.json
+    store.py             # load/save ~/.window-control/lenses.json
     overlay.py           # PyQt6 draggable lens editor
     grid.py              # optional coord-grid overlay for debugging
+    border.py            # access border subprocess: amber watching / blue thinking /
+                         #   red acting + step/goal label chip; drawn OUTSIDE the lens
   zones/
     capture.py           # mss grab of lens rect → (b64, w, h, origin)
-    perception.py        # Anthropic call, parse tool_use, prompt caching
-    action.py            # dispatch ParsedAction to active backend
+    perception.py        # Anthropic call, parse tool_use, prompt caching, history pruning
+    action.py            # dispatch ParsedAction to active backend (bounds-check here)
   backends/
     base.py              # InputBackend interface
-    desktop.py           # mouse + keyboard via pyautogui
+    desktop.py           # mouse + keyboard via pyautogui (80ms click hold)
+  goals/
+    store.py             # named prompt strings, ~/.window-control/goals.json
+  actionmap/
+    store.py             # flat per-lens button maps, ~/.window-control/actionmaps/
+  scripts/
+    runner.py            # YAML script runner: tap/type/wait/swipe/key/scroll/run/goal
+    tree.py              # project-tree resolution: nearest-wins buttons, run: targets
   utils/
-    coords.py            # lens-rel → screen-abs, DPI helpers
+    coords.py            # DPI setup (per-monitor v2; physical px everywhere)
     windows.py           # optional: snap-lens-to-window helper
-tests/
-runs/                    # gitignored
-scripts/
+tests/                   # pytest, headless; mock at every external boundary
+runs/                    # gitignored — per-run screenshots + trace.jsonl
+projects/                # gitignored user project trees; projects/example/ is tracked
+docs/                    # feature specs (action maps/scripts, project trees)
 ```
 
 ## Conventions
 
 - All paths in code are absolute or `pathlib.Path` from project root.
 - Coordinates: tuples `(x, y)`. Rects: `(x, y, w, h)`. Never mix.
-- Two coordinate spaces only: **lens-relative** (model speaks this) and **screen-absolute** (OS speaks this). Convert at the boundary in `coords.py`. Never convert anywhere else.
+- Two coordinate spaces only: **lens-relative** (model speaks this; stored in button
+  maps) and **screen-absolute** (OS speaks this). Convert at one boundary
+  (`Lens.to_screen`, reached via `zones/action.py`). Never convert anywhere else.
 - DPI: process is set to per-monitor DPI-aware on startup. `mss` and `SendInput` agree on physical pixels, so coord math is identity. If a refactor introduces logical-pixel APIs, add a conversion layer — do not sprinkle scale factors.
-- Tests run against `pytest`. Mock the Anthropic client at the perception boundary.
+- Tests run against `pytest` (`python -m pytest -q` is the verify command). Mock the
+  Anthropic client at the perception boundary; store/runner tests take injectable
+  `path`/`dir` parameters so nothing touches the real home dir.
+
+## Deterministic layer (the sanctioned "action aid")
+
+Built under the amendment below; specs in `docs/`. Quick map:
+
+- **Goals** — saved prompt strings, nothing more. `--save-goal/--goal-name/--list-goals`.
+- **Flat button maps** — `~/.window-control/actionmaps/<lens>.json`; one-shot
+  `--tap NAME --lens X`. Entries are `{"point": [x, y]}` or `{"rect": [x, y, w, h]}`
+  (rect taps its center); coordinates are lens-relative.
+- **Scripts** — YAML step lists run by `src/scripts/runner.py`. Step types:
+  `tap/type/wait/swipe/key/scroll` (deterministic, free), `run:` (call another
+  script; expansion happens fully before execution, cycle-guarded, depth ≤ 8),
+  `goal:` (full vision loop; costs API credits). Abort on first failure.
+- **Project trees** — `projects/<name>/` (repo-local, gitignored; `projects/example/`
+  is the tracked skeleton). `project.yaml` at the root pins the lens (subfolders may
+  not override it). Buttons and `run:` targets resolve by a nearest-wins walk from
+  the script's folder up to the project root; shared scripts resolve lexically
+  (their own folder, not the caller's). `run:` targets come only from ancestors'
+  `scripts/` subfolders.
+- Working pattern: **vision discovers, human confirms, script replays.** Harvest
+  coordinates from `runs/<ts>/trace.jsonl` + step screenshots; keep `goal:` steps
+  for anything variable (popups, results, load timing) and as end-of-script verifiers.
 
 ## What this project is NOT
 
@@ -141,7 +183,19 @@ scripts/
 
 ## Working on this repo
 
-- Use `/delegate` as the entry point for all development work on this repo — implementation, refactors, bug fixes, and feature builds. It routes work through the horde to the cheapest capable agent tier and judges by the verify command.
+- Use `/delegate` as the entry point for all development work on this repo — implementation, refactors, bug fixes, and feature builds. It routes work through the horde to the cheapest capable agent tier and judges by the verify command (`python -m pytest -q`).
 - When in doubt about scope, re-read "Core invariants" above and ask before deviating.
 - Refactors that violate an invariant need a written justification in the PR description.
-- New action types go through `InputBackend`. New perception strategies go through `zones/perception.py`. New capture sources go through `zones/capture.py`. Do not bypass.
+- New action types go through `InputBackend`. New perception strategies go through `zones/perception.py`. New capture sources go through `zones/capture.py`. New script step types go through `runner.step_to_action` + schema validation. Do not bypass.
+
+## Field notes (hard-won, do not relearn)
+
+- Unity-based targets (e.g. Umamusume) ignore zero-duration synthetic clicks;
+  `DesktopBackend.click` holds ~80ms for this. Press-and-hold is the proven form.
+- A click that "does nothing" may be hitting an already-active control — verify with
+  a button that has a guaranteed visible effect before blaming input synthesis.
+- Snap-to-window lenses currently include the OS title bar: vision models will click
+  the maximize button (~lens-rel (1230, 30) on the uma lens) and wreck every stored
+  coordinate. Re-snap to the client area, or keep chrome out of the lens.
+- Stored coordinates are lens-relative: moving/resizing the lens or the target window
+  invalidates every button map harvested under the old geometry.
