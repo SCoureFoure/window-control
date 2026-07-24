@@ -1,6 +1,7 @@
 """Project-tree resolution — pure path functions, no I/O side effects beyond reads.
 
-Project trees live under ``~/.window-control/projects/<project>/``, an
+Project trees live under ``<repo>/projects/<project>/`` (gitignored — personal
+game/app trees are user data; starter examples may ship separately), an
 optional deeper layout of shared "menu" scripts/buttons at the project root
 with task folders nested beneath. Buttons and ``run:`` script targets both
 resolve by a single nearest-wins walk: from the folder containing the
@@ -22,7 +23,9 @@ import yaml
 from src.actionmap.store import ActionMap, resolve as resolve_in_map
 
 CONFIG_DIR = Path.home() / ".window-control"
-PROJECTS_DIR = CONFIG_DIR / "projects"
+# Repo root: src/scripts/tree.py -> parents[2]. Projects are repo-local but
+# gitignored (user data in the working tree, not in version control).
+PROJECTS_DIR = Path(__file__).resolve().parents[2] / "projects"
 
 
 def locate(spec: str, projects_dir: Path = PROJECTS_DIR) -> Path:

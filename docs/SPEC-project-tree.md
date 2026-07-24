@@ -17,8 +17,14 @@ organizational — it adds no new action types and no branching.
 
 ## 1. Layout
 
+> **Amended 2026-07-23 (Leader):** project trees live at `<repo>/projects/`
+> (gitignored), not `~/.window-control/projects/` — visible in the editor's repo
+> tree while staying out of version control. Flat `~/.window-control/scripts/` and
+> `actionmaps/` are unchanged. Future work (not now): ship starter example trees,
+> e.g. `docs/examples/projects/`, copyable into `projects/`.
+
 ```
-~/.window-control/projects/
+projects/                         # at the repo root, gitignored
   <project>/                      # e.g. umamusume/
     project.yaml                  # lens binding + defaults; REQUIRED at project root
     buttons.json                  # optional project-level action map (shared "menu" buttons)

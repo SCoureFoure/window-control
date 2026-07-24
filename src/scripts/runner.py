@@ -22,8 +22,8 @@ into a ``ParsedAction`` and dispatched through the existing
 bounds-checks intact. ``run: name`` splices another script's steps in place,
 resolved before execution (see ``build_plan``).
 
-A script may also live in a project tree under
-``~/.window-control/projects/<project>/...`` (see docs/SPEC-project-tree.md).
+A script may also live in a project tree under the repo-local
+``projects/<project>/...`` (gitignored; see docs/SPEC-project-tree.md).
 Tree scripts must not set ``lens:`` — the lens comes from the project root's
 ``project.yaml`` — and their ``tap``/``swipe``/``scroll``/``run:`` names
 resolve lexically via ``src.scripts.tree`` (nearest-wins walk up to the
