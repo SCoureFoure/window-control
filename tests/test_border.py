@@ -4,7 +4,14 @@ The load-bearing invariant: every band rect must lie OUTSIDE the lens rect, so
 the on-screen border is never captured into the screenshot sent to Claude.
 """
 
-from src.lens.border import _read_state, _write_state, band_rects
+from src.lens.border import (
+    _read_state,
+    _write_state,
+    band_rects,
+    decode_state,
+    encode_state,
+    label_rect,
+)
 
 
 def _overlaps(a, b) -> bool:
@@ -54,3 +61,28 @@ def test_state_roundtrip(tmp_path):
 def test_read_state_missing_returns_default():
     assert _read_state(str_missing := "definitely-not-a-real-path.state") == "watching"
     assert _read_state(str_missing, default="stop") == "stop"
+
+
+def test_encode_decode_roundtrip():
+    assert decode_state(encode_state("thinking", 3, 20)) == ("thinking", 3, 20)
+    assert decode_state(encode_state("watching")) == ("watching", None, None)
+    assert decode_state(encode_state("stop", 9, 20)) == ("stop", None, None)
+
+
+def test_decode_tolerates_garbage_step():
+    assert decode_state("acting x y") == ("acting", None, None)
+    assert decode_state("") == ("watching", None, None)
+
+
+def test_label_rect_default_placement():
+    assert label_rect((200, 300, 800, 600), 8) == (192, 268, 320, 24)
+
+
+def test_label_rect_flips_below_when_no_room():
+    assert label_rect((200, 20, 800, 600), 8, surface_top=0) == (192, 628, 320, 24)
+
+
+def test_label_rect_never_overlaps_lens():
+    for lens in [(200, 300, 800, 600), (200, 20, 800, 600)]:
+        r = label_rect(lens, 8, surface_top=0)
+        assert not _overlaps(r, lens)

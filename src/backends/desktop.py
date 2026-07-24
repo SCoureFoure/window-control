@@ -13,10 +13,20 @@ import pyautogui
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.05
 
+# A click holds the button briefly, like a finger tap. Unity-based targets poll
+# input per frame and can miss a zero-duration down/up (observed live 2026-07-23:
+# Umamusume ignored pyautogui.click but registered press-and-hold).
+CLICK_HOLD_S = 0.08
+
 
 class DesktopBackend:
     def click(self, x: int, y: int, button: str = "left") -> None:
-        pyautogui.click(x=x, y=y, button=button)
+        pyautogui.moveTo(x, y)
+        pyautogui.mouseDown(button=button)
+        try:
+            time.sleep(CLICK_HOLD_S)
+        finally:
+            pyautogui.mouseUp(button=button)
 
     def double_click(self, x: int, y: int) -> None:
         pyautogui.doubleClick(x=x, y=y)

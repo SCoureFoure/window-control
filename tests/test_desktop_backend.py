@@ -21,12 +21,15 @@ def backend(pg):
 
 def test_click(pg, backend):
     backend.click(10, 20)
-    pg.click.assert_called_once_with(x=10, y=20, button="left")
+    pg.moveTo.assert_called_once_with(10, 20)
+    pg.mouseDown.assert_called_once_with(button="left")
+    pg.mouseUp.assert_called_once_with(button="left")
 
 
 def test_click_right(pg, backend):
     backend.click(10, 20, button="right")
-    pg.click.assert_called_once_with(x=10, y=20, button="right")
+    pg.mouseDown.assert_called_once_with(button="right")
+    pg.mouseUp.assert_called_once_with(button="right")
 
 
 def test_double_click(pg, backend):

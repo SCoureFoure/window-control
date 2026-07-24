@@ -124,7 +124,19 @@ scripts/
 - Not a browser automation tool. Selenium, Playwright, CDP are out of scope.
 - Not an Appium replacement. No device farms, no platform drivers.
 - Not a screen reader or a11y client. We use pixels, not the a11y tree.
-- Not an RPA platform. No flow designer, no scheduler, no record-and-replay.
+- Not an RPA platform. No flow designer, no scheduler.
+  - **Amendment (2026-07-23, user-approved):** a bounded deterministic layer is permitted
+    as an **action aid** — the execution-side sibling of §4's perception aid. Scope:
+    per-lens action maps (named, user-curated, lens-relative coordinates in
+    `~/.window-control/actionmaps/<lens>.json`), a one-shot `tap NAME` command, and YAML
+    scripts mixing vision-loop `goal:` steps with deterministic `tap/type/wait/swipe`
+    steps. Justification: maps are optional, per-lens shortcut caches for buttons the
+    human has already confirmed; vision remains the default and the only mode for
+    unknown UIs; deterministic steps never feed the model non-pixel hints (§3 intact),
+    never bind an HWND (§1), and emit input only through the existing `InputBackend`
+    with lens bounds-checks (§2, §10). Still out of scope: recording user input to
+    build maps, schedulers, conditional/branching flow logic, and any flow-designer UI.
+    Map hints must never be injected into perception (spec path B1 — rejected).
 - Not multi-agent. One lens, one loop, one model per run.
 
 ## Working on this repo

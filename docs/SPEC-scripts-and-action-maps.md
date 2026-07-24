@@ -1,6 +1,8 @@
 # Spec (draft): goals files, action maps, and scripts
 
-Status: **DESIGN ONLY — not approved, not built.** Written 2026-07-23 at the Leader's
+Status: **APPROVED 2026-07-23 — Leader adopted Feature A and amended the charter for
+B2 + C (full scripts).** The amendment text lives in `CLAUDE.md` → "What this project
+is NOT". Path B1 (map hints to the model) remains rejected. Written 2026-07-23 at the Leader's
 request to spec two ideas: (1) a reusable "script entry" surface, and (2) a stored
 "button grid" / action map tied to a lens. This document exists to surface the design
 choices — especially where they collide with the charter — so the Leader can decide
