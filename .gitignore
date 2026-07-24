@@ -4,6 +4,10 @@ __pycache__/
 .venv/
 venv/
 runs/
+# Personal project trees are user data — only the example skeleton is tracked.
+projects/*
+!projects/README.md
+!projects/example/
 .pytest_cache/
 *.egg-info/
 .idea/

@@ -1,0 +1,7 @@
+# REQUIRED at the project root. The lens name must exist in ~/.window-control/lenses.json
+# (create one with: python -m src.orchestrator --new-lens --lens my-app).
+lens: my-app
+
+# Optional defaults. Subfolders may override these in their own project.yaml
+# (but never `lens` — that is fixed at the root).
+max-steps-per-goal: 15

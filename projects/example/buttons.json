@@ -1,0 +1,7 @@
+{
+  "nav-home": {"point": [345, 776]},
+  "nav-tasks": {"point": [460, 776]},
+  "dialog-cancel": {"point": [250, 745]},
+  "dialog-confirm": {"point": [437, 745]},
+  "settings-gear": {"rect": [1000, 250, 90, 50]}
+}

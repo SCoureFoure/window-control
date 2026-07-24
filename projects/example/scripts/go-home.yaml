@@ -1,0 +1,7 @@
+# A shared script: callable from any task in this project via `run: go-home`.
+# Lives in scripts/ at the project root, so its button names resolve against the
+# ROOT buttons.json (lexical scoping) — the same behavior for every caller.
+name: go-home
+steps:
+  - tap: nav-home
+  - wait: 2.0

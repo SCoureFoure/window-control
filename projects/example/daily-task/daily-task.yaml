@@ -1,0 +1,20 @@
+# Run with:  python -m src.scripts.runner example/daily-task/daily-task
+#
+# Buttons resolve nearest-wins: `open-daily` and `claim-reward` come from THIS
+# folder's buttons.json; `nav-tasks` drips down from the project root; and this
+# folder's `dialog-confirm` OVERRIDES the root's entry of the same name.
+#
+# Pattern: deterministic taps for stable chrome, `goal:` for anything variable
+# (popups, results, load states). goal: steps run the full vision loop and cost
+# API credits; everything else is free.
+name: daily-task
+steps:
+  - run: go-home                # shared script from <project>/scripts/
+  - tap: nav-tasks
+  - wait: 2.0
+  - tap: open-daily
+  - wait: 2.0
+  - tap: dialog-confirm         # this task's override, not the root's
+  - wait: 3.0
+  - goal: "Dismiss any popups or result screens until the task list is visible again"
+  - tap: claim-reward
